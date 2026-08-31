@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reel Bnao Paise K — Admin Panel</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6fb;color:#182033}
+header{background:linear-gradient(135deg,#6c35ff,#9b4dff);color:#fff;padding:20px}
+header h1{margin:0;font-size:23px} header p{margin:6px 0 0;opacity:.9}
+nav{display:flex;gap:8px;overflow:auto;background:#fff;padding:10px;border-bottom:1px solid #ddd}
+nav button{border:0;background:#eee;padding:11px 14px;border-radius:10px;white-space:nowrap;font-weight:700}
+nav button.active{background:#6c35ff;color:#fff}
+main{max-width:1000px;margin:auto;padding:16px}.tab{display:none}.tab.active{display:block}
+.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 3px 15px #0000000c}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.stat{padding:18px;border-radius:15px;background:#fff}.stat b{font-size:25px;display:block;margin-top:5px}
+input,select,textarea{width:100%;padding:12px;border:1px solid #d8dce8;border-radius:10px;margin:6px 0 12px;font-size:15px}
+button.primary{background:#6c35ff;color:#fff;border:0;padding:12px 16px;border-radius:10px;font-weight:700}
+button.danger{background:#ffe9e9;color:#d51d1d;border:0;padding:9px 12px;border-radius:9px;font-weight:700}
+button.small{border:0;background:#eee;padding:8px 11px;border-radius:8px}
+.item{border:1px solid #e2e5ee;border-radius:12px;padding:13px;margin:10px 0}
+.item-row{display:flex;justify-content:space-between;gap:10px;align-items:center}.muted{color:#70778a;font-size:13px}
+.badge{display:inline-block;padding:5px 8px;border-radius:20px;background:#e9e5ff;color:#5a29d8;font-size:12px;font-weight:700}
+.notice{background:#fff8df;border:1px solid #f1d46c;padding:12px;border-radius:11px;font-size:13px;margin-bottom:14px}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
+@media(max-width:600px){table{font-size:12px}th,td{padding:8px}.item-row{align-items:flex-start}}
+</style>
+</head>
+<body>
+<header><h1>🎬 Reel Bnao Paise K</h1><p>Admin Control Panel</p></header>
+
+<nav>
+<button class="active" onclick="showTab('dash',this)">Dashboard</button>
+<button onclick="showTab('courses',this)">Courses & Videos</button>
+<button onclick="showTab('transactions',this)">Transactions</button>
+<button onclick="showTab('referrals',this)">Referrals</button>
+<button onclick="showTab('settings',this)">Settings</button>
+</nav>
+
+<main>
+<section id="dash" class="tab active">
+<div class="notice">⚠️ यह अभी एक local prototype है। असली online money transfer/payment के लिए secure backend + payment gateway की जरूरत होगी।</div>
+<div class="grid">
+<div class="stat">💰 Total Sales<b id="sales">₹0</b></div>
+<div class="stat">👥 Students<b id="students">0</b></div>
+<div class="stat">🎁 Referral Paid<b id="refpaid">₹0</b></div>
+<div class="stat">🎬 Videos<b id="videocount">0</b></div>
+</div>
+<div class="card"><h3>Quick Actions</h3>
+<button class="primary" onclick="showTab('courses')">+ Course / Video जोड़ें</button>
+<button class="small" onclick="showTab('transactions')">Transactions देखें</button>
+<button class="small" onclick="showTab('referrals')">Referral देखें</button>
+</div>
+</section>
+
+<section id="courses" class="tab">
+<div class="card">
+<h2>📚 Course जोड़ें</h2>
+<input id="courseName" placeholder="Course का नाम">
+<input id="coursePrice" type="number" placeholder="Course price ₹">
+<button class="primary" onclick="addCourse()">Course Save करें</button>
+</div>
+<div id="courseList"></div>
+</section>
+
+<section id="transactions" class="tab">
+<div class="card"><h2>💳 Transactions</h2>
+<p class="muted">Demo transaction records — असली payment verification backend से होगी।</p>
+<table><thead><tr><th>ID</th><th>User</th><th>Amount</th><th>Status</th></tr></thead>
+<tbody id="txnList"></tbody></table>
+</div>
+</section>
+
+<section id="referrals" class="tab">
+<div class="card">
+<h2>🎁 Referral Earnings</h2>
+<input id="refCode" placeholder="Referral code">
+<input id="refUser" placeholder="User name">
+<input id="refEarn" type="number" placeholder="Earning ₹">
+<button class="primary" onclick="addReferral()">Referral जोड़ें</button>
+</div>
+<div class="card"><table><thead><tr><th>Code</th><th>User</th><th>Earning</th><th>Action</th></tr></thead><tbody id="refList"></tbody></table></div>
+</section>
+
+<section id="settings" class="tab">
+<div class="card"><h2>⚙️ Website Settings</h2>
+<label>Website Name</label><input id="siteName" value="Reel Bnao Paise K">
+<label>Referral Commission (%)</label><input id="commission" type="number" value="10">
+<button class="primary" onclick="saveSettings()">Settings Save करें</button>
+</div>
+</section>
+</main>
+
+<script>
+const KEY='rbpk_admin_v1';
+let data=JSON.parse(localStorage.getItem(KEY)||'{"courses":[],"referrals":[],"transactions":[]}');
+
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function showTab(id,btn){
+ document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+ document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+ if(btn)btn.classList.add('active');
+}
+function addCourse(){
+ const n=document.getElementById('courseName').value.trim(), p=Number(document.getElementById('coursePrice').value);
+ if(!n)return alert('Course का नाम डालो');
+ data.courses.push({id:Date.now(),name:n,price:p,videos:[]});
+ document.getElementById('courseName').value='';document.getElementById('coursePrice').value='';
+ save();
+}
+function addVideo(id){
+ const title=prompt('Video का नाम डालो:');
+ if(!title)return;
+ const url=prompt('Video URL डालो (YouTube/MP4 आदि):');
+ if(!url)return;
+ const c=data.courses.find(x=>x.id===id); c.videos.push({id:Date.now(),title,url});save();
+}
+function delVideo(cid,vid){
+ const c=data.courses.find(x=>x.id===cid);c.videos=c.videos.filter(v=>v.id!==vid);save();
+}
+function delCourse(id){if(confirm('Course हटाना है?')){data.courses=data.courses.filter(c=>c.id!==id);save()}}
+function addReferral(){
+ const code=document.getElementById('refCode').value.trim(),user=document.getElementById('refUser').value.trim(),earn=Number(document.getElementById('refEarn').value);
+ if(!code||!user)return alert('Code और User डालो');
+ data.referrals.push({id:Date.now(),code,user,earn});save();
+ document.getElementById('refCode').value='';document.getElementById('refUser').value='';document.getElementById('refEarn').value='';
+}
+function delReferral(id){data.referrals=data.referrals.filter(x=>x.id!==id);save()}
+function saveSettings(){localStorage.setItem('rbpk_name',document.getElementById('siteName').value);localStorage.setItem('rbpk_commission',document.getElementById('commission').value);alert('Settings save हो गईं')}
+function render(){
+ let html='';
+ data.courses.forEach(c=>{
+  html+=`<div class="card"><div class="item-row"><div><h3>📘 ${esc(c.name)}</h3><span class="badge">₹${c.price||0}</span></div><button class="danger" onclick="delCourse(${c.id})">Course हटाएँ</button></div>
+  <button class="primary" onclick="addVideo(${c.id})">+ Video जोड़ें</button>
+  ${c.videos.length?c.videos.map(v=>`<div class="item"><div class="item-row"><div>🎥 <b>${esc(v.title)}</b><div class="muted">${esc(v.url)}</div></div><button class="danger" onclick="delVideo(${c.id},${v.id})">हटाएँ</button></div></div>`).join(''):'<p class="muted">अभी कोई video नहीं है।</p>'}</div>`;
+ });
+ document.getElementById('courseList').innerHTML=html||'<div class="card">अभी कोई course नहीं है।</div>';
+ document.getElementById('videocount').textContent=data.courses.reduce((a,c)=>a+c.videos.length,0);
+ document.getElementById('refpaid').textContent='₹'+data.referrals.reduce((a,r)=>a+r.earn,0);
+ document.getElementById('students').textContent=data.transactions.filter(t=>t.status==='Success').length;
+ document.getElementById('sales').textContent='₹'+data.transactions.filter(t=>t.status==='Success').reduce((a,t)=>a+t.amount,0);
+ document.getElementById('txnList').innerHTML=data.transactions.map(t=>`<tr><td>${t.id}</td><td>${esc(t.user)}</td><td>₹${t.amount}</td><td><span class="badge">${t.status}</span></td></tr>`).join('')||'<tr><td colspan="4">कोई transaction नहीं</td></tr>';
+ document.getElementById('refList').innerHTML=data.referrals.map(r=>`<tr><td>${esc(r.code)}</td><td>${esc(r.user)}</td><td>₹${r.earn}</td><td><button class="danger" onclick="delReferral(${r.id})">हटाएँ</button></td></tr>`).join('')||'<tr><td colspan="4">कोई referral नहीं</td></tr>';
+}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+render();
+</script>
+</body>
+</html>
